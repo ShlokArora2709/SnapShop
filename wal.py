@@ -5,10 +5,10 @@ import cv2
 from dotenv import load_dotenv
 import speech_recognition as sr
 import pandas as pd
-import pickle
+import numpy as np
 
 df=pd.read_csv('titles.csv')
-similarity=pickle.load('similarity.pkl')
+similarity=np.load('similarity.npy')
 
 recognizer = sr.Recognizer()
 
@@ -35,7 +35,7 @@ def listen_for_keyword():
         try:
             text = recognizer.recognize_google(audio)
             print(f"Recognized: {text}")
-            if 'recommend' in text.lower():
+            if 'hello' in text.lower():
                 return True
         except sr.UnknownValueError:
             print("Could not understand audio")
