@@ -6,18 +6,25 @@ from dotenv import load_dotenv
 import speech_recognition as sr
 import pandas as pd
 import numpy as np
+import re
 
-df=pd.read_csv('titles.csv')
-similarity=np.load('similarity.npy')
+df = pd.read_csv('titles.csv')
+similarity = np.load('similarity.npy')
 
 recognizer = sr.Recognizer()
 
 # Load environment variables from .env file
 load_dotenv()
 
+def clean_response(response):
+    # Remove Markdown formatting (e.g., **bold**) and newline characters
+    cleaned_text = re.sub(r'\*\*(.*?)\*\*', r'\1', response)  # Remove markdown
+    cleaned_text = cleaned_text.replace('\n', ' ')  # Remove newline characters
+    return cleaned_text.strip()  # Remove leading/trailing whitespace
+
 def recommend(title):
-    index = df[df['title']==title].index[0]
-    distances = sorted(list(enumerate(similarity[index])),reverse=True,key=lambda x: x[1])
+    index = df[df['title'] == title].index[0]
+    distances = sorted(list(enumerate(similarity[index])), reverse=True, key=lambda x: x[1])
     for i in distances[1:6]:
         print(df.iloc[i[0]].title)
 
@@ -66,8 +73,13 @@ def main():
             img = PIL.Image.open('captured_image.jpg')
             
             model = genai.GenerativeModel(model_name="gemini-1.5-flash")
-            response = model.generate_content([f"What is in this photo? your response should only contain item name nothing else and always try to give a response {items_prompt}", img])
-            recommend(response.text)
+            response = model.generate_content([f"What is in this photo? Your response should only contain the item name, nothing else, and always try to give a response from: {items_prompt}", img])
+            
+            # Extract the response text properly
+            response_text = response.candidates[0].content.parts[0].text
+            clean_text = clean_response(response_text)
+            recommend(clean_text)
+            print(clean_text)
 
 if __name__ == "__main__":
     main()
