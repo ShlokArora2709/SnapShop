@@ -1,3 +1,6 @@
+from flask import Flask,render_template,jsonify,request
+import base64
+import io
 import google.generativeai as genai
 import PIL.Image
 import os
@@ -7,6 +10,8 @@ import speech_recognition as sr
 import pandas as pd
 import numpy as np
 import re
+
+app = Flask(__name__)
 
 df = pd.read_csv('titles.csv')
 similarity = np.load('similarity.npy')
@@ -25,8 +30,10 @@ def clean_response(response):
 def recommend(title):
     index = df[df['title'] == title].index[0]
     distances = sorted(list(enumerate(similarity[index])), reverse=True, key=lambda x: x[1])
+    products=[]
     for i in distances[1:6]:
-        print(df.iloc[i[0]].title)
+        products.append(df.iloc[i[0]].title)
+    return products
 
 # Load and parse the dataset
 def load_dataset(file_path):
@@ -60,26 +67,30 @@ def capture_image():
     cv2.destroyAllWindows()
 
 # Main function
-def main():
+@app.route('/search',methods=['POST'])
+def search():
     genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-
-    # Load items from the dataset
     items = load_dataset('walmart_sample_01.txt')
     items_prompt = "Please select from these items: " + ", ".join(items)
-    
-    while True:
-        if listen_for_keyword():
-            capture_image()
-            img = PIL.Image.open('captured_image.jpg')
-            
-            model = genai.GenerativeModel(model_name="gemini-1.5-flash")
-            response = model.generate_content([f"What is in this photo? Your response should only contain the item name, nothing else, and always try to give a response from: {items_prompt}", img])
-            
-            # Extract the response text properly
-            response_text = response.candidates[0].content.parts[0].text
-            clean_text = clean_response(response_text)
-            recommend(clean_text)
-            print(clean_text)
+    data = request.get_json()
+    img = data['img'].split(',')[1]
+    img = base64.b64decode(img)
 
-if __name__ == "__main__":
-    main()
+    img = PIL.Image.open(io.BytesIO(img)) 
+    model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+
+    try:
+        response = model.generate_content([f"What is in this photo? Your response should only contain the item name, nothing else, and always try to give a response from: {items_prompt}", img])
+        response_text = response.candidates[0].content.parts[0].text
+        clean_text = clean_response(response_text)
+        products=recommend(clean_text)
+        return jsonify({'name': clean_text,'products': products})
+    except Exception as err:
+        print(err)
+        return jsonify({'message': 'Could not find the product you are looking for'})
+
+@app.route('/',methods=['GET','POST'])
+def main():
+    return render_template('landing.html')
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000,debug=True)
