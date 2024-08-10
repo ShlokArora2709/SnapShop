@@ -1,4 +1,6 @@
 from flask import Flask,render_template,jsonify,request
+import base64
+import io
 import google.generativeai as genai
 import PIL.Image
 import os
@@ -66,18 +68,17 @@ def capture_image():
 
 # Main function
 @app.route('/search',methods=['POST'])
-def get_response():
+def search():
     genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-    # Load items from the dataset
     items = load_dataset('walmart_sample_01.txt')
     items_prompt = "Please select from these items: " + ", ".join(items)
-    # if listen_for_keyword():
-    # capture_image()
-    # data=request.get_json()
-    file=request.files.get('ip-img')
-    img = PIL.Image.open(file)
+    data = request.get_json()
+    img = data['img'].split(',')[1]
+    img = base64.b64decode(img)
+
+    img = PIL.Image.open(io.BytesIO(img)) 
     model = genai.GenerativeModel(model_name="gemini-1.5-flash")
-    # Extract the response text properly
+
     try:
         response = model.generate_content([f"What is in this photo? Your response should only contain the item name, nothing else, and always try to give a response from: {items_prompt}", img])
         response_text = response.candidates[0].content.parts[0].text
