@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnapShop</title>
+</head>
+<body>
+    <form id="input-form" action="/search" method="post" enctype="multipart/form-data">
+        <label for="user">Upload image:</label>
+        <input
+          type="file"
+          id="user"
+          capture="user"
+          accept="image/*"
+          name="ip-img"
+        >        
+        <button type="submit">Submit</button>
+    </form> 
+    <script>
+        const form=document.getElementById('input-form')
+        form.addEventListener('submit',(e)=>{
+            e.preventDefault()
+            const formData = new FormData(event.target);
+                     
+            fetch('/search', {
+                method: 'POST',
+                body: formData
+            }).then(res=>res.json())
+            .then(res=> {
+                console.log("name of product",res.name);
+                console.log('recommendations')
+                console.log(res.products);
+                form.reset();
+            })
+        })
+    </script>
+</body>
+</html>
