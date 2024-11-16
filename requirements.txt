@@ -1,0 +1,8 @@
+Flask
+google-generativeai
+Pillow
+python-dotenv
+opencv-python
+SpeechRecognition
+pandas
+numpy
